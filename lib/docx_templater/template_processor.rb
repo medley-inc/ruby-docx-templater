@@ -13,7 +13,10 @@ module DocxTemplater
     def render(document)
       document.force_encoding(Encoding::UTF_8) if document.respond_to?(:force_encoding)
       data.each do |key, value|
-        document.gsub!("$#{key.to_s.upcase}$", safe(value))
+        param_name = key.to_s.upcase
+        replacement = safe(value)
+        document.gsub!("$#{param_name}$", replacement)
+        document.gsub!("{{#{param_name}}}", replacement)
       end
       document
     end
@@ -31,7 +34,9 @@ module DocxTemplater
                    .get_input_stream
                    .read
       document.force_encoding(Encoding::UTF_8) if document.respond_to?(:force_encoding)
-      document.scan(/\$([A-Z_\d+]+)\$/).flatten
+      dollar_keys = document.scan(/\$([A-Z_\d+]+)\$/).flatten
+      mustache_keys = document.scan(/\{\{([A-Z_\d+]+)\}\}/).flatten
+      dollar_keys + mustache_keys
     end
 
     private

@@ -2,6 +2,7 @@
 
 require 'spec_helper'
 require 'nokogiri'
+require 'tempfile'
 
 module DocxTemplater
   module TestData
@@ -171,6 +172,46 @@ EOF
     end
   end
 
+  it 'KEYが{{}}で囲まれている場合に置換されること' do
+    xml = <<-EOF
+      <w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">
+        <w:body>
+          <w:p>Before.{{KEY}}After</w:p>
+        </w:body>
+      </w:document>
+    EOF
+    actual = DocxTemplater::TemplateProcessor.new(key: 'VALUE').render(xml)
+    expected_xml = <<-EOF
+      <w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">
+        <w:body>
+          <w:p>Before.VALUEAfter</w:p>
+        </w:body>
+      </w:document>
+    EOF
+    expect(actual).to eq(expected_xml)
+  end
+
+  it '$$と{{}}が混在していても両方置換されること' do
+    xml = <<-EOF
+      <w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">
+        <w:body>
+          <w:p>Before.$KEY1$After</w:p>
+          <w:p>Before.{{KEY2}}After</w:p>
+        </w:body>
+      </w:document>
+    EOF
+    actual = DocxTemplater::TemplateProcessor.new(key1: 'VALUE1', key2: 'VALUE2').render(xml)
+    expected_xml = <<-EOF
+      <w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">
+        <w:body>
+          <w:p>Before.VALUE1After</w:p>
+          <w:p>Before.VALUE2After</w:p>
+        </w:body>
+      </w:document>
+    EOF
+    expect(actual).to eq(expected_xml)
+  end
+
   it 'should replace all array keys with values' do
     expect(xml).to include('#BEGIN_ROW:')
     expect(xml).to include('#END_ROW:')
@@ -233,5 +274,26 @@ EOF
     expect(out).not_to include('#SUM')
     expect(out).to include("#{data[:roster].count} Students")
     expect(out).to include("#{data[:event_reports].count} Events")
+  end
+
+  it '$$と{{}}が混在していても両方取得できること' do
+    tempfile = Tempfile.new(['template', '.docx'])
+
+    Zip::OutputStream.open(tempfile.path) do |zos|
+      zos.put_next_entry('word/document.xml')
+      zos.write <<-EOF
+        <w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">
+          <w:body>
+            <w:p>Before.$KEY1$After</w:p>
+            <w:p>Before.{{KEY2}}After</w:p>
+          </w:body>
+        </w:document>
+      EOF
+    end
+
+    actual = DocxTemplater::TemplateProcessor.scan_params(tempfile.path)
+    expected = ['KEY1', 'KEY2']
+
+    expect(actual).to eq(expected)
   end
 end
