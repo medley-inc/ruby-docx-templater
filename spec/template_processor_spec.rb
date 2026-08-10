@@ -212,6 +212,27 @@ EOF
     expect(actual).to eq(expected_xml)
   end
 
+  it '値にバックスラッシュが含まれていても正しく置換されること' do
+    xml = <<-'EOF'
+      <w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">
+        <w:body>
+          <w:p>Before.$KEY1$After</w:p>
+          <w:p>Before.{{KEY2}}After</w:p>
+        </w:body>
+      </w:document>
+    EOF
+    actual = DocxTemplater::TemplateProcessor.new(key1: 'C:\path\1', key2: 'a\0b').render(xml)
+    expected_xml = <<-'EOF'
+      <w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">
+        <w:body>
+          <w:p>Before.C:\path\1After</w:p>
+          <w:p>Before.a\0bAfter</w:p>
+        </w:body>
+      </w:document>
+    EOF
+    expect(actual).to eq(expected_xml)
+  end
+
   it 'should replace all array keys with values' do
     expect(xml).to include('#BEGIN_ROW:')
     expect(xml).to include('#END_ROW:')

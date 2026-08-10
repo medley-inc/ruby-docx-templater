@@ -15,8 +15,8 @@ module DocxTemplater
       data.each do |key, value|
         param_name = key.to_s.upcase
         replacement = safe(value)
-        document.gsub!("$#{param_name}$", replacement)
-        document.gsub!("{{#{param_name}}}", replacement)
+        document.gsub!("$#{param_name}$") { replacement }
+        document.gsub!("{{#{param_name}}}") { replacement }
       end
       document
     end
