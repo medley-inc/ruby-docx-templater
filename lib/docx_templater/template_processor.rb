@@ -34,9 +34,7 @@ module DocxTemplater
                    .get_input_stream
                    .read
       document.force_encoding(Encoding::UTF_8) if document.respond_to?(:force_encoding)
-      dollar_keys = document.scan(/\$([A-Z_\d+]+)\$/).flatten
-      mustache_keys = document.scan(/\{\{([A-Z_\d+]+)\}\}/).flatten
-      dollar_keys + mustache_keys
+      document.scan(/\$([A-Z_\d+]+)\$|\{\{([A-Z_\d+]+)\}\}/).flatten.compact
     end
 
     private
