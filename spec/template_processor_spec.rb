@@ -40,6 +40,15 @@ describe DocxTemplater::TemplateProcessor do
   let(:xml) { File.read("#{base_path}/word/document.xml") }
   let(:parser) { DocxTemplater::TemplateProcessor.new(data) }
 
+  def docx_with(document_xml)
+    file = Tempfile.new(['fixture', '.docx'])
+    Zip::OutputStream.open(file.path) do |out|
+      out.put_next_entry('word/document.xml')
+      out.write(document_xml)
+    end
+    file
+  end
+
   context 'valid xml' do
     it 'should render and still be valid XML' do
       expect(Nokogiri::XML.parse(xml)).to be_xml
@@ -157,7 +166,49 @@ EOF
     expect(actual).to eq(expected_xml)
   end
 
-  it 'should replace all simple keys with values' do
+  it 'should scan dollar keys' do
+    xml = <<EOF
+<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">
+<w:body>
+  <w:p>$TEACHER$</w:p>
+  <w:p>$DISTRICT$</w:p>
+</w:body>
+EOF
+    fixture = docx_with(xml)
+    out = DocxTemplater::TemplateProcessor.scan_params(fixture.path)
+
+    expect(out).to eq(%w[TEACHER DISTRICT])
+  end
+
+  it 'should scan mustache keys' do
+    xml = <<EOF
+<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">
+<w:body>
+  <w:p>{{TEACHER}}</w:p>
+  <w:p>{{DISTRICT}}</w:p>
+</w:body>
+EOF
+    fixture = docx_with(xml)
+    out = DocxTemplater::TemplateProcessor.scan_params(fixture.path)
+
+    expect(out).to eq(%w[TEACHER DISTRICT])
+  end
+
+  it 'should scan both dollar and mustache keys' do
+    xml = <<EOF
+<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">
+<w:body>
+  <w:p>$TEACHER$</w:p>
+  <w:p>{{DISTRICT}}</w:p>
+</w:body>
+EOF
+    fixture = docx_with(xml)
+    out = DocxTemplater::TemplateProcessor.scan_params(fixture.path)
+
+    expect(out).to eq(%w[TEACHER DISTRICT])
+  end
+
+  it 'should replace dollar keys with values' do
     non_array_keys = data.reject { |_, v| [Array, TrueClass, FalseClass].include?(v.class) }
     non_array_keys.keys.each do |key|
       expect(xml).to include("$#{key.to_s.upcase}$")
@@ -169,6 +220,66 @@ EOF
       expect(out).not_to include("$#{key}$")
       expect(out).to include(data[key].to_s)
     end
+  end
+
+  it 'should replace mustache keys with values' do
+    xml = <<EOF
+<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">
+<w:body>
+  <w:p>{{TEACHER}}</w:p>
+</w:body>
+</xml>
+EOF
+    expect(xml).to include('{{TEACHER}}')
+    expect(xml).not_to include(data[:teacher])
+
+    out = parser.render(xml)
+
+    expect(out).to include(data[:teacher])
+    expect(out).not_to include('{{TEACHER}}')
+  end
+
+  it 'should replace both dollar and mustache keys with values' do
+    xml = <<EOF
+<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">
+<w:body>
+  <w:p>$TEACHER$</w:p>
+  <w:p>{{DISTRICT}}</w:p>
+</w:body>
+</xml>
+EOF
+    expect(xml).to include('$TEACHER$')
+    expect(xml).to include('{{DISTRICT}}')
+    expect(xml).not_to include(data[:teacher])
+    expect(xml).not_to include(data[:district])
+
+    out = parser.render(xml)
+
+    expect(out).to include(data[:teacher])
+    expect(out).to include(data[:district])
+    expect(out).not_to include('$TEACHER$')
+    expect(out).not_to include('{{DISTRICT}}')
+  end
+
+  it 'should scan and replace both dollar and mustache keys' do
+    xml = <<EOF
+<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">
+<w:body>
+  <w:p>$TEACHER$</w:p>
+  <w:p>{{DISTRICT}}</w:p>
+</w:body>
+</w:document>
+EOF
+    fixture = docx_with(xml)
+
+    keys = DocxTemplater::TemplateProcessor.scan_params(fixture.path)
+    expect(keys).to eq(%w[TEACHER DISTRICT])
+
+    out = parser.render(xml)
+    expect(out).to include(data[:teacher])
+    expect(out).to include(data[:district])
+    expect(out).not_to include('$')
+    expect(out).not_to include('{{')
   end
 
   it 'should replace all array keys with values' do
