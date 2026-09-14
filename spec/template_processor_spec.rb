@@ -141,7 +141,7 @@ EOF
       </w:tc></w:tr>
     </w:tbl>
   </w:body>
-</xml>
+</w:document>
 EOF
       expect { parser.render(xml) }.to raise_error(/#END_ROW:EVENT_REPORTS# nil: true/)
     end
@@ -153,7 +153,7 @@ EOF
 <w:body>
   <w:p>Before.$KEY$After</w:p>
 </w:body>
-</xml>
+</w:document>
 EOF
     actual = DocxTemplater::TemplateProcessor.new(key: nil).render(xml)
     expected_xml = <<EOF
@@ -161,7 +161,7 @@ EOF
 <w:body>
   <w:p>Before.After</w:p>
 </w:body>
-</xml>
+</w:document>
 EOF
     expect(actual).to eq(expected_xml)
   end
@@ -173,6 +173,7 @@ EOF
   <w:p>$TEACHER$</w:p>
   <w:p>$DISTRICT$</w:p>
 </w:body>
+</w:document>
 EOF
     fixture = docx_with(xml)
     out = DocxTemplater::TemplateProcessor.scan_params(fixture.path)
@@ -187,6 +188,7 @@ EOF
   <w:p>{{TEACHER}}</w:p>
   <w:p>{{DISTRICT}}</w:p>
 </w:body>
+</w:document>
 EOF
     fixture = docx_with(xml)
     out = DocxTemplater::TemplateProcessor.scan_params(fixture.path)
@@ -201,6 +203,7 @@ EOF
   <w:p>$TEACHER$</w:p>
   <w:p>{{DISTRICT}}</w:p>
 </w:body>
+</w:document>
 EOF
     fixture = docx_with(xml)
     out = DocxTemplater::TemplateProcessor.scan_params(fixture.path)
@@ -228,7 +231,7 @@ EOF
 <w:body>
   <w:p>{{TEACHER}}</w:p>
 </w:body>
-</xml>
+</w:document>
 EOF
     expect(xml).to include('{{TEACHER}}')
     expect(xml).not_to include(data[:teacher])
@@ -246,7 +249,7 @@ EOF
   <w:p>$TEACHER$</w:p>
   <w:p>{{DISTRICT}}</w:p>
 </w:body>
-</xml>
+</w:document>
 EOF
     expect(xml).to include('$TEACHER$')
     expect(xml).to include('{{DISTRICT}}')
