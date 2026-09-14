@@ -30,16 +30,34 @@ module DocxTemplater
 end
 
 describe DocxTemplater::TemplateProcessor do
-  let(:data) { Marshal.load(Marshal.dump(DocxTemplater::TestData::DATA)) } # deep copy
-  let(:parser) { DocxTemplater::TemplateProcessor.new(data) }
+  let (:data) { DocxTemplater::TestData::DATA.transform_values(&:dup) }
+  let (:parser) { described_class.new(data) }
 
   def docx_with(document_xml)
-    file = Tempfile.new(['fixture', '.docx'])
+    file = Tempfile.new(%w[fixture .docx])
     Zip::OutputStream.open(file.path) do |out|
       out.put_next_entry('word/document.xml')
       out.write(document_xml)
     end
     file
+  end
+
+  def build_shared_document_xml(texts)
+    <<~EOF
+      <w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">
+      <w:body>
+        #{texts.map { |text| %(<w:p>#{text}</w:p>)}.join("\n")}
+      </w:body>
+      </w:document>
+    EOF
+  end
+
+  def dollar(key)
+    "$#{key.to_s.upcase}$"
+  end
+
+  def mustache(key)
+    "{{#{key.to_s.upcase}}}"
   end
 
   it 'should enter no text for a nil value' do
@@ -61,125 +79,54 @@ EOF
     expect(actual).to eq(expected_xml)
   end
 
+  # ドル記号で囲まれたパラメータがスキャンされること
   it 'should scan dollar keys' do
-    xml = <<EOF
-<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">
-<w:body>
-  <w:p>$PATIENT_NAME$</w:p>
-  <w:p>$CLINIC_NAME$</w:p>
-</w:body>
-</w:document>
-EOF
-    fixture = docx_with(xml)
+    fixture = docx_with(build_shared_document_xml(['$PATIENT_NAME$','$CLINIC_NAME$']))
     out = DocxTemplater::TemplateProcessor.scan_params(fixture.path)
-
     expect(out).to eq(%w[PATIENT_NAME CLINIC_NAME])
   end
 
+  # 二重波括弧で囲まれたパラメータがスキャンされること
   it 'should scan mustache keys' do
-    xml = <<EOF
-<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">
-<w:body>
-  <w:p>{{PATIENT_NAME}}</w:p>
-  <w:p>{{CLINIC_NAME}}</w:p>
-</w:body>
-</w:document>
-EOF
-    fixture = docx_with(xml)
+    fixture = docx_with(build_shared_document_xml(['{{PATIENT_NAME}}','{{CLINIC_NAME}}']))
     out = DocxTemplater::TemplateProcessor.scan_params(fixture.path)
-
     expect(out).to eq(%w[PATIENT_NAME CLINIC_NAME])
   end
 
+  # ドル記号と二重波括弧の両方で囲まれたパラメータがスキャンされること
   it 'should scan both dollar and mustache keys' do
-    xml = <<EOF
-<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">
-<w:body>
-  <w:p>$PATIENT_NAME$</w:p>
-  <w:p>{{CLINIC_NAME}}</w:p>
-</w:body>
-</w:document>
-EOF
-    fixture = docx_with(xml)
+    fixture = docx_with(build_shared_document_xml(['$PATIENT_NAME$','{{CLINIC_NAME}}']))
     out = DocxTemplater::TemplateProcessor.scan_params(fixture.path)
-
     expect(out).to eq(%w[PATIENT_NAME CLINIC_NAME])
   end
 
+  # ドル記号のキーが値に置き換わること
   it 'should replace dollar keys with values' do
-    xml = <<EOF
-<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">
-<w:body>
-#{data.keys.map { |key| "  <w:p>$#{key.to_s.upcase}$</w:p>" }.join("\n")}
-</w:body>
-</w:document>
-EOF
+    xml = build_shared_document_xml(['$PATIENT_NAME$', '$CLINIC_NAME$'])
     out = parser.render(xml)
-
-    data.each do |key, value|
-      expect(out).to include(value.to_s)
-      expect(out).not_to include("$#{key.to_s.upcase}$")
-    end
-  end
-
-  it 'should replace mustache keys with values' do
-    xml = <<EOF
-<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">
-<w:body>
-  <w:p>{{PATIENT_NAME}}</w:p>
-</w:body>
-</w:document>
-EOF
-    expect(xml).to include('{{PATIENT_NAME}}')
-    expect(xml).not_to include(data[:patient_name])
-
-    out = parser.render(xml)
-
     expect(out).to include(data[:patient_name])
-    expect(out).not_to include('{{PATIENT_NAME}}')
+    expect(out).to include(data[:clinic_name])
+    expect(out).not_to include('$PATIENT_NAME$')
+    expect(out).not_to include('$CLINIC_NAME$')
   end
 
-  it 'should replace both dollar and mustache keys with values' do
-    xml = <<EOF
-<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">
-<w:body>
-  <w:p>$PATIENT_NAME$</w:p>
-  <w:p>{{CLINIC_NAME}}</w:p>
-</w:body>
-</w:document>
-EOF
-    expect(xml).to include('$PATIENT_NAME$')
-    expect(xml).to include('{{CLINIC_NAME}}')
-    expect(xml).not_to include(data[:patient_name])
-    expect(xml).not_to include(data[:clinic_name])
-
+  # 二重波括弧のキーが値に置き換わること
+  it 'should replace mustache keys with values' do
+    xml = build_shared_document_xml(['{{PATIENT_NAME}}', '{{CLINIC_NAME}}'])
     out = parser.render(xml)
+    expect(out).to include(data[:patient_name])
+    expect(out).to include(data[:clinic_name])
+    expect(out).not_to include('{{PATIENT_NAME}}')
+    expect(out).not_to include('{{CLINIC_NAME}}')
+  end
 
+  # ドル記号と二重波括弧の両方のキーが値に置き換わること
+  it 'should replace both dollar and mustache keys with values' do
+    xml = build_shared_document_xml(['$PATIENT_NAME$', '{{CLINIC_NAME}}'])
+    out = parser.render(xml)
     expect(out).to include(data[:patient_name])
     expect(out).to include(data[:clinic_name])
     expect(out).not_to include('$PATIENT_NAME$')
     expect(out).not_to include('{{CLINIC_NAME}}')
   end
-
-  it 'should scan and replace both dollar and mustache keys' do
-    xml = <<EOF
-<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">
-<w:body>
-  <w:p>$PATIENT_NAME$</w:p>
-  <w:p>{{CLINIC_NAME}}</w:p>
-</w:body>
-</w:document>
-EOF
-    fixture = docx_with(xml)
-
-    keys = DocxTemplater::TemplateProcessor.scan_params(fixture.path)
-    expect(keys).to eq(%w[PATIENT_NAME CLINIC_NAME])
-
-    out = parser.render(xml)
-    expect(out).to include(data[:patient_name])
-    expect(out).to include(data[:clinic_name])
-    expect(out).not_to include('$')
-    expect(out).not_to include('{{')
-  end
-
 end
