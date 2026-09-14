@@ -129,4 +129,22 @@ EOF
     expect(out).not_to include('$PATIENT_NAME$')
     expect(out).not_to include('{{CLINIC_NAME}}')
   end
+
+  # 全キーが値に置き換わること
+  it 'should replace all keys with values' do
+    xml = build_shared_document_xml(data.keys.map { |key| dollar(key) })
+    out = parser.render(xml)
+    data.each do |key, value|
+      expect(out).to include(value.to_s)
+      expect(out).not_to include(dollar(key))
+    end
+  end
+
+  # 値に半角の & が含まれても壊れた XML を出力しないこと
+  it 'should escape xml special characters in values' do
+    data[:clinic_name] = 'メディカル&ケアクリニック'
+    xml = build_shared_document_xml(['$CLINIC_NAME$'])
+    out = parser.render(xml)
+    expect(out).to include('メディカル&amp;ケアクリニック')
+  end
 end
