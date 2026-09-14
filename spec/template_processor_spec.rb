@@ -81,28 +81,28 @@ EOF
 
   # ドル記号で囲まれたパラメータがスキャンされること
   it 'should scan dollar keys' do
-    fixture = docx_with(build_shared_document_xml(['$PATIENT_NAME$','$CLINIC_NAME$']))
+    fixture = docx_with(build_shared_document_xml(%w[$PATIENT_NAME$ $CLINIC_NAME$]))
     out = DocxTemplater::TemplateProcessor.scan_params(fixture.path)
     expect(out).to eq(%w[PATIENT_NAME CLINIC_NAME])
   end
 
   # 二重波括弧で囲まれたパラメータがスキャンされること
   it 'should scan mustache keys' do
-    fixture = docx_with(build_shared_document_xml(['{{PATIENT_NAME}}','{{CLINIC_NAME}}']))
+    fixture = docx_with(build_shared_document_xml(%w[{{PATIENT_NAME}} {{CLINIC_NAME}}]))
     out = DocxTemplater::TemplateProcessor.scan_params(fixture.path)
     expect(out).to eq(%w[PATIENT_NAME CLINIC_NAME])
   end
 
   # ドル記号と二重波括弧の両方で囲まれたパラメータがスキャンされること
   it 'should scan both dollar and mustache keys' do
-    fixture = docx_with(build_shared_document_xml(['$PATIENT_NAME$','{{CLINIC_NAME}}']))
+    fixture = docx_with(build_shared_document_xml(%w[$PATIENT_NAME$ {{CLINIC_NAME}}]))
     out = DocxTemplater::TemplateProcessor.scan_params(fixture.path)
     expect(out).to eq(%w[PATIENT_NAME CLINIC_NAME])
   end
 
   # ドル記号のキーが値に置き換わること
   it 'should replace dollar keys with values' do
-    xml = build_shared_document_xml(['$PATIENT_NAME$', '$CLINIC_NAME$'])
+    xml = build_shared_document_xml(%w[$PATIENT_NAME$ $CLINIC_NAME$])
     out = parser.render(xml)
     expect(out).to include(data[:patient_name])
     expect(out).to include(data[:clinic_name])
@@ -112,7 +112,7 @@ EOF
 
   # 二重波括弧のキーが値に置き換わること
   it 'should replace mustache keys with values' do
-    xml = build_shared_document_xml(['{{PATIENT_NAME}}', '{{CLINIC_NAME}}'])
+    xml = build_shared_document_xml(%w[{{PATIENT_NAME}} {{CLINIC_NAME}}])
     out = parser.render(xml)
     expect(out).to include(data[:patient_name])
     expect(out).to include(data[:clinic_name])
@@ -122,7 +122,7 @@ EOF
 
   # ドル記号と二重波括弧の両方のキーが値に置き換わること
   it 'should replace both dollar and mustache keys with values' do
-    xml = build_shared_document_xml(['$PATIENT_NAME$', '{{CLINIC_NAME}}'])
+    xml = build_shared_document_xml(%w[$PATIENT_NAME$ {{CLINIC_NAME}}])
     out = parser.render(xml)
     expect(out).to include(data[:patient_name])
     expect(out).to include(data[:clinic_name])
