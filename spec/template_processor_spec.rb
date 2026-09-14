@@ -30,7 +30,7 @@ module DocxTemplater
 end
 
 describe DocxTemplater::TemplateProcessor do
-  let (:data) { DocxTemplater::TestData::DATA.transform_values(&:dup) }
+  let (:data) { DocxTemplater::TestData::DATA.dup }
   let (:parser) { described_class.new(data) }
 
   def docx_with(document_xml)
