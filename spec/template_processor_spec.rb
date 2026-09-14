@@ -31,8 +31,6 @@ end
 
 describe DocxTemplater::TemplateProcessor do
   let(:data) { Marshal.load(Marshal.dump(DocxTemplater::TestData::DATA)) } # deep copy
-  let(:base_path) { SPEC_BASE_PATH.join('example_input') }
-  let(:xml) { File.read("#{base_path}/word/document.xml") }
   let(:parser) { DocxTemplater::TemplateProcessor.new(data) }
 
   def docx_with(document_xml)
