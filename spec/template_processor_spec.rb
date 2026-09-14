@@ -3,31 +3,29 @@ require 'spec_helper'
 module DocxTemplater
   module TestData
     DATA = {
-      teacher: 'Priya Vora',
-      building: 'Building #14',
-      classroom: 'Rm 202'.to_sym,
-      district: 'Washington County Public Schools',
-      senority: 12.25,
-      roster: [
-        { name: 'Sally', age: 12, attendence: '100%' },
-        { name: :Xiao, age: 10, attendence: '94%' },
-        { name: 'Bryan', age: 13, attendence: '100%' },
-        { name: 'Larry', age: 11, attendence: '90%' },
-        { name: 'Kumar', age: 12, attendence: '76%' },
-        { name: 'Amber', age: 11, attendence: '100%' },
-        { name: 'Isaiah', age: 12, attendence: '89%' },
-        { name: 'Omar', age: 12, attendence: '99%' },
-        { name: 'Xi', age: 11, attendence: '20%' },
-        { name: 'Noushin', age: 12, attendence: '100%' }
-      ],
-      event_reports: [
-        { name: 'Science Museum Field Trip', notes: 'PTA sponsored event. Spoke to Astronaut with HAM radio.' },
-        { name: 'Wilderness Center Retreat', notes: '2 days hiking for charity:water fundraiser, $10,200 raised.' }
-      ],
-      true_cond: true,
-      false_cond: false,
-      created_at: '11-12-03 02:01'
-    }.freeze
+      patient_id: '00001',
+      patient_kana: 'サンプルカンジャ',
+      patient_name: 'サンプル患者',
+      patient_sex: '男',
+      patient_postal: '123-4567',
+      patient_address: '東京都港区メドレーヶ丘１-２−３',
+      patient_birthdate_ad: '1989年01月01日',
+      patient_birthdate_jc: '昭和64年1月1日',
+      patient_age: '40',
+      patient_tel: '09012345678',
+      clinic_name: 'サンプルクリニック',
+      clinic_address: '東京都港区123丁目456番地クリニクスビル1Ｆ',
+      clinic_tel: '123456789',
+      clinic_staff: 'サンプル医師',
+      yyyy: 2022,
+      yyyy_jc: '令和4',
+      mm: 8,
+      dd: 25,
+      medication_1: 'サンプル薬剤名1 ３錠 １日３回朝昼夕食後 ７日分',
+      medication_2: 'サンプル薬剤名2 3錠 １日２回朝夕食後 ５日分',
+      disease_name_1: 'サンプル病名1',
+      anamnesis_name_1: 'サンプル既往歴1',
+    }
   end
 end
 
@@ -69,58 +67,60 @@ EOF
     xml = <<EOF
 <w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">
 <w:body>
-  <w:p>$TEACHER$</w:p>
-  <w:p>$DISTRICT$</w:p>
+  <w:p>$PATIENT_NAME$</w:p>
+  <w:p>$CLINIC_NAME$</w:p>
 </w:body>
 </w:document>
 EOF
     fixture = docx_with(xml)
     out = DocxTemplater::TemplateProcessor.scan_params(fixture.path)
 
-    expect(out).to eq(%w[TEACHER DISTRICT])
+    expect(out).to eq(%w[PATIENT_NAME CLINIC_NAME])
   end
 
   it 'should scan mustache keys' do
     xml = <<EOF
 <w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">
 <w:body>
-  <w:p>{{TEACHER}}</w:p>
-  <w:p>{{DISTRICT}}</w:p>
+  <w:p>{{PATIENT_NAME}}</w:p>
+  <w:p>{{CLINIC_NAME}}</w:p>
 </w:body>
 </w:document>
 EOF
     fixture = docx_with(xml)
     out = DocxTemplater::TemplateProcessor.scan_params(fixture.path)
 
-    expect(out).to eq(%w[TEACHER DISTRICT])
+    expect(out).to eq(%w[PATIENT_NAME CLINIC_NAME])
   end
 
   it 'should scan both dollar and mustache keys' do
     xml = <<EOF
 <w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">
 <w:body>
-  <w:p>$TEACHER$</w:p>
-  <w:p>{{DISTRICT}}</w:p>
+  <w:p>$PATIENT_NAME$</w:p>
+  <w:p>{{CLINIC_NAME}}</w:p>
 </w:body>
 </w:document>
 EOF
     fixture = docx_with(xml)
     out = DocxTemplater::TemplateProcessor.scan_params(fixture.path)
 
-    expect(out).to eq(%w[TEACHER DISTRICT])
+    expect(out).to eq(%w[PATIENT_NAME CLINIC_NAME])
   end
 
   it 'should replace dollar keys with values' do
-    non_array_keys = data.reject { |_, v| [Array, TrueClass, FalseClass].include?(v.class) }
-    non_array_keys.keys.each do |key|
-      expect(xml).to include("$#{key.to_s.upcase}$")
-      expect(xml).not_to include(data[key].to_s)
-    end
+    xml = <<EOF
+<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">
+<w:body>
+#{data.keys.map { |key| "  <w:p>$#{key.to_s.upcase}$</w:p>" }.join("\n")}
+</w:body>
+</w:document>
+EOF
     out = parser.render(xml)
 
-    non_array_keys.each do |key|
-      expect(out).not_to include("$#{key}$")
-      expect(out).to include(data[key].to_s)
+    data.each do |key, value|
+      expect(out).to include(value.to_s)
+      expect(out).not_to include("$#{key.to_s.upcase}$")
     end
   end
 
@@ -128,58 +128,58 @@ EOF
     xml = <<EOF
 <w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">
 <w:body>
-  <w:p>{{TEACHER}}</w:p>
+  <w:p>{{PATIENT_NAME}}</w:p>
 </w:body>
 </w:document>
 EOF
-    expect(xml).to include('{{TEACHER}}')
-    expect(xml).not_to include(data[:teacher])
+    expect(xml).to include('{{PATIENT_NAME}}')
+    expect(xml).not_to include(data[:patient_name])
 
     out = parser.render(xml)
 
-    expect(out).to include(data[:teacher])
-    expect(out).not_to include('{{TEACHER}}')
+    expect(out).to include(data[:patient_name])
+    expect(out).not_to include('{{PATIENT_NAME}}')
   end
 
   it 'should replace both dollar and mustache keys with values' do
     xml = <<EOF
 <w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">
 <w:body>
-  <w:p>$TEACHER$</w:p>
-  <w:p>{{DISTRICT}}</w:p>
+  <w:p>$PATIENT_NAME$</w:p>
+  <w:p>{{CLINIC_NAME}}</w:p>
 </w:body>
 </w:document>
 EOF
-    expect(xml).to include('$TEACHER$')
-    expect(xml).to include('{{DISTRICT}}')
-    expect(xml).not_to include(data[:teacher])
-    expect(xml).not_to include(data[:district])
+    expect(xml).to include('$PATIENT_NAME$')
+    expect(xml).to include('{{CLINIC_NAME}}')
+    expect(xml).not_to include(data[:patient_name])
+    expect(xml).not_to include(data[:clinic_name])
 
     out = parser.render(xml)
 
-    expect(out).to include(data[:teacher])
-    expect(out).to include(data[:district])
-    expect(out).not_to include('$TEACHER$')
-    expect(out).not_to include('{{DISTRICT}}')
+    expect(out).to include(data[:patient_name])
+    expect(out).to include(data[:clinic_name])
+    expect(out).not_to include('$PATIENT_NAME$')
+    expect(out).not_to include('{{CLINIC_NAME}}')
   end
 
   it 'should scan and replace both dollar and mustache keys' do
     xml = <<EOF
 <w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">
 <w:body>
-  <w:p>$TEACHER$</w:p>
-  <w:p>{{DISTRICT}}</w:p>
+  <w:p>$PATIENT_NAME$</w:p>
+  <w:p>{{CLINIC_NAME}}</w:p>
 </w:body>
 </w:document>
 EOF
     fixture = docx_with(xml)
 
     keys = DocxTemplater::TemplateProcessor.scan_params(fixture.path)
-    expect(keys).to eq(%w[TEACHER DISTRICT])
+    expect(keys).to eq(%w[PATIENT_NAME CLINIC_NAME])
 
     out = parser.render(xml)
-    expect(out).to include(data[:teacher])
-    expect(out).to include(data[:district])
+    expect(out).to include(data[:patient_name])
+    expect(out).to include(data[:clinic_name])
     expect(out).not_to include('$')
     expect(out).not_to include('{{')
   end
