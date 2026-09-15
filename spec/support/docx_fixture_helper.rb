@@ -8,7 +8,7 @@ module DocxFixtureHelper
     file
   end
 
-  def build_shared_document_xml(texts)
+  def build_document_xml(texts)
     <<~EOF
       <w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">
       <w:body>
@@ -18,7 +18,7 @@ module DocxFixtureHelper
     EOF
   end
 
-  def dollar(key)
+  def dollar_placeholder(key)
     "$#{key.to_s.upcase}$"
   end
 end
