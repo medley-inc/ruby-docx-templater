@@ -1,7 +1,7 @@
 require 'pathname'
 require 'docx_templater'
 
-SPEC_BASE_PATH = Pathname.new(File.expand_path(File.dirname(__FILE__)))
+Dir[File.expand_path("support/**/*.rb", __dir__)].sort.each { |file| require file }
 
 RSpec.configure do |config|
   %i[expect_with mock_with].each do |method|
@@ -9,4 +9,7 @@ RSpec.configure do |config|
       c.syntax = :expect
     end
   end
+
+  config.include DocxFixtureHelper
+  config.include TemplateDataBuilder
 end
