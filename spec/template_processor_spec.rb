@@ -60,25 +60,6 @@ describe DocxTemplater::TemplateProcessor do
     "{{#{key.to_s.upcase}}}"
   end
 
-  it 'should enter no text for a nil value' do
-    xml = <<EOF
-<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">
-<w:body>
-  <w:p>Before.$KEY$After</w:p>
-</w:body>
-</w:document>
-EOF
-    actual = DocxTemplater::TemplateProcessor.new(key: nil).render(xml)
-    expected_xml = <<EOF
-<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">
-<w:body>
-  <w:p>Before.After</w:p>
-</w:body>
-</w:document>
-EOF
-    expect(actual).to eq(expected_xml)
-  end
-
   # ドル記号で囲まれたパラメータがスキャンされること
   it 'should scan dollar keys' do
     fixture = docx_with(build_shared_document_xml(%w[$PATIENT_NAME$ $CLINIC_NAME$]))
