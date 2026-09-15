@@ -60,72 +60,76 @@ describe DocxTemplater::TemplateProcessor do
     "{{#{key.to_s.upcase}}}"
   end
 
-  # ドル記号で囲まれたパラメータがスキャンされること
-  it 'should scan dollar keys' do
-    fixture = docx_with(build_shared_document_xml(%w[$PATIENT_NAME$ $CLINIC_NAME$]))
-    out = DocxTemplater::TemplateProcessor.scan_params(fixture.path)
-    expect(out).to eq(%w[PATIENT_NAME CLINIC_NAME])
-  end
+  describe '.scan_params' do
+    # ドル記号で囲まれたパラメータがスキャンされること
+    it 'should scan dollar keys' do
+      fixture = docx_with(build_shared_document_xml(%w[$PATIENT_NAME$ $CLINIC_NAME$]))
+      out = DocxTemplater::TemplateProcessor.scan_params(fixture.path)
+      expect(out).to eq(%w[PATIENT_NAME CLINIC_NAME])
+    end
 
-  # 二重波括弧で囲まれたパラメータがスキャンされること
-  it 'should scan mustache keys' do
-    fixture = docx_with(build_shared_document_xml(%w[{{PATIENT_NAME}} {{CLINIC_NAME}}]))
-    out = DocxTemplater::TemplateProcessor.scan_params(fixture.path)
-    expect(out).to eq(%w[PATIENT_NAME CLINIC_NAME])
-  end
+    # 二重波括弧で囲まれたパラメータがスキャンされること
+    it 'should scan mustache keys' do
+      fixture = docx_with(build_shared_document_xml(%w[{{PATIENT_NAME}} {{CLINIC_NAME}}]))
+      out = DocxTemplater::TemplateProcessor.scan_params(fixture.path)
+      expect(out).to eq(%w[PATIENT_NAME CLINIC_NAME])
+    end
 
-  # ドル記号と二重波括弧の両方で囲まれたパラメータがスキャンされること
-  it 'should scan both dollar and mustache keys' do
-    fixture = docx_with(build_shared_document_xml(%w[$PATIENT_NAME$ {{CLINIC_NAME}}]))
-    out = DocxTemplater::TemplateProcessor.scan_params(fixture.path)
-    expect(out).to eq(%w[PATIENT_NAME CLINIC_NAME])
-  end
-
-  # ドル記号のキーが値に置き換わること
-  it 'should replace dollar keys with values' do
-    xml = build_shared_document_xml(%w[$PATIENT_NAME$ $CLINIC_NAME$])
-    out = parser.render(xml)
-    expect(out).to include(data[:patient_name])
-    expect(out).to include(data[:clinic_name])
-    expect(out).not_to include('$PATIENT_NAME$')
-    expect(out).not_to include('$CLINIC_NAME$')
-  end
-
-  # 二重波括弧のキーが値に置き換わること
-  it 'should replace mustache keys with values' do
-    xml = build_shared_document_xml(%w[{{PATIENT_NAME}} {{CLINIC_NAME}}])
-    out = parser.render(xml)
-    expect(out).to include(data[:patient_name])
-    expect(out).to include(data[:clinic_name])
-    expect(out).not_to include('{{PATIENT_NAME}}')
-    expect(out).not_to include('{{CLINIC_NAME}}')
-  end
-
-  # ドル記号と二重波括弧の両方のキーが値に置き換わること
-  it 'should replace both dollar and mustache keys with values' do
-    xml = build_shared_document_xml(%w[$PATIENT_NAME$ {{CLINIC_NAME}}])
-    out = parser.render(xml)
-    expect(out).to include(data[:patient_name])
-    expect(out).to include(data[:clinic_name])
-    expect(out).not_to include('$PATIENT_NAME$')
-    expect(out).not_to include('{{CLINIC_NAME}}')
-  end
-
-  # 全キーが値に置き換わること
-  it 'should replace all keys with values' do
-    xml = build_shared_document_xml(data.keys.map { |key| dollar(key) })
-    out = parser.render(xml)
-    data.each do |key, value|
-      expect(out).to include(value.to_s)
-      expect(out).not_to include(dollar(key))
+    # ドル記号と二重波括弧の両方で囲まれたパラメータがスキャンされること
+    it 'should scan both dollar and mustache keys' do
+      fixture = docx_with(build_shared_document_xml(%w[$PATIENT_NAME$ {{CLINIC_NAME}}]))
+      out = DocxTemplater::TemplateProcessor.scan_params(fixture.path)
+      expect(out).to eq(%w[PATIENT_NAME CLINIC_NAME])
     end
   end
 
-  # 値に半角の & が含まれても壊れた XML を出力しないこと
-  it 'should escape xml special characters in values' do
-    data[:clinic_name] = 'メディカル&ケアクリニック'
-    xml = build_shared_document_xml(['$CLINIC_NAME$'])
-    out = parser.render(xml)
-    expect(out).to include('メディカル&amp;ケアクリニック')
+  describe '#render' do
+    # ドル記号のキーが値に置き換わること
+    it 'should replace dollar keys with values' do
+      xml = build_shared_document_xml(%w[$PATIENT_NAME$ $CLINIC_NAME$])
+      out = parser.render(xml)
+      expect(out).to include(data[:patient_name])
+      expect(out).to include(data[:clinic_name])
+      expect(out).not_to include('$PATIENT_NAME$')
+      expect(out).not_to include('$CLINIC_NAME$')
+    end
+
+    # 二重波括弧のキーが値に置き換わること
+    it 'should replace mustache keys with values' do
+      xml = build_shared_document_xml(%w[{{PATIENT_NAME}} {{CLINIC_NAME}}])
+      out = parser.render(xml)
+      expect(out).to include(data[:patient_name])
+      expect(out).to include(data[:clinic_name])
+      expect(out).not_to include('{{PATIENT_NAME}}')
+      expect(out).not_to include('{{CLINIC_NAME}}')
+    end
+
+    # ドル記号と二重波括弧の両方のキーが値に置き換わること
+    it 'should replace both dollar and mustache keys with values' do
+      xml = build_shared_document_xml(%w[$PATIENT_NAME$ {{CLINIC_NAME}}])
+      out = parser.render(xml)
+      expect(out).to include(data[:patient_name])
+      expect(out).to include(data[:clinic_name])
+      expect(out).not_to include('$PATIENT_NAME$')
+      expect(out).not_to include('{{CLINIC_NAME}}')
+    end
+
+    # 全キーが値に置き換わること
+    it 'should replace all keys with values' do
+      xml = build_shared_document_xml(data.keys.map { |key| dollar(key) })
+      out = parser.render(xml)
+      data.each do |key, value|
+        expect(out).to include(value.to_s)
+        expect(out).not_to include(dollar(key))
+      end
+    end
+
+    # 値に半角の & が含まれても壊れた XML を出力しないこと
+    it 'should escape xml special characters in values' do
+      data[:clinic_name] = 'メディカル&ケアクリニック'
+      xml = build_shared_document_xml(['$CLINIC_NAME$'])
+      out = parser.render(xml)
+      expect(out).to include('メディカル&amp;ケアクリニック')
+    end
   end
 end
