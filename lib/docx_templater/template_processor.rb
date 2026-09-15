@@ -1,5 +1,3 @@
-require 'nokogiri'
-
 module DocxTemplater
   class TemplateProcessor
     attr_reader :data, :escape_html
