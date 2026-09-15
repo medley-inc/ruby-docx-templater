@@ -78,6 +78,18 @@ describe DocxTemplater::TemplateProcessor do
       out = DocxTemplater::TemplateProcessor.scan_params(fixture.path)
       expect(out).to eq(%w[PATIENT_NAME CLINIC_NAME])
     end
+
+    it 'キーを含まない文字列しかないときに[]を返すか' do
+      fixture = docx_with(build_shared_document_xml(['no keys']))
+      out = DocxTemplater::TemplateProcessor.scan_params(fixture.path)
+      expect(out).to eq([])
+    end
+
+    it 'ドル記号でも二重波括弧でも囲まれていないパラメータはスキャンされないこと' do
+      fixture = docx_with(build_shared_document_xml(%w[%PATIENT_ID% %PATIENT_NAME%]))
+      out = DocxTemplater::TemplateProcessor.scan_params(fixture.path)
+      expect(out).to eq([])
+    end
   end
 
   describe '#render' do
@@ -122,6 +134,13 @@ describe DocxTemplater::TemplateProcessor do
       xml = build_shared_document_xml(['$CLINIC_NAME$'])
       out = parser.render(xml)
       expect(out).to include('メディカル&amp;ケアクリニック')
+    end
+
+    it 'ドル記号でも二重波括弧でも囲まれていないパラメータは値に置き換わらないこと' do
+      xml = build_shared_document_xml(%w[%PATIENT_ID% %PATIENT_NAME%])
+      out = parser.render(xml)
+      expect(out).to include('%PATIENT_ID%')
+      expect(out).to include('%PATIENT_NAME%')
     end
   end
 end
