@@ -22,6 +22,7 @@ Gem::Specification.new do |s|
   s.test_files = Dir['spec/**/*']
 
   s.add_runtime_dependency('rubyzip', '>= 1.1.1')
+  s.add_runtime_dependency('nokogiri', '> 1')
 
   s.add_development_dependency('rake')
   s.add_development_dependency('rubocop')
